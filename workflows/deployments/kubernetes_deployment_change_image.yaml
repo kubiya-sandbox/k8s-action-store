@@ -1,0 +1,82 @@
+version: 3
+type: conversation
+name: "change_kubernetes_deployment_image"
+steps:
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: selected_namespace
+    type: input
+    value_type: enum
+    possible_values: ${k8s_namespaces}
+    prompt: "Select the namespace of the deployment you want to change"
+  - id: k8s_deployments
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_deployment"
+      parameters:
+        namespace: ${selected_namespace}
+  - id: selected_deployment
+    type: input
+    value_type: enum
+    possible_values: ${k8s_deployments}
+    prompt: "Select the deployment you want to change"
+  - id: k8s_deployment_image
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "get_deployment_image"
+      parameters:
+        deployment_name: ${selected_deployment}
+        namespace: ${selected_namespace}
+  - id: current_image_tag
+    type: message
+    prompt: |
+      📝 Current image for deployment *${selected_deployment}* in namespace *${selected_namespace}*:
+       ```${k8s_deployment_image}```
+  - id: new_image
+    type: input
+    value_type: text
+    prompt: "Enter the new image to use"
+  - id: validate
+    type: input
+    value_type: boolean
+    prompt: '⚠️ Image *${k8s_deployment_image}* will be changed to *${new_image}* in deployment *${selected_deployment}* in namespace *${selected_namespace}*. Do you want to continue?'
+  - id: condition
+    type: condition
+    if:
+      arg: ${validate}
+      is: equals
+      arg2: "true"
+      then:
+        - id: notify
+          type: message
+          prompt: |
+            🔄 Changing image *${k8s_deployment_image}* to *${new_image}* in deployment *${selected_deployment}* in namespace *${selected_namespace}*...
+        - id: change
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "set_deployment_image"
+            parameters:
+              deployment_name: ${selected_deployment}
+              namespace: ${selected_namespace}
+              image: ${new_image}
+        - id: print
+          type: message
+          prompt: |
+            ✅ *Done!*
+            Image *${k8s_deployment_image}* changed to *${new_image}* in deployment *${selected_deployment}* in namespace *${selected_namespace}*!
+      else:
+        - id: cancel
+          type: message
+          prompt: |
+            ❌ *Cancelled!*

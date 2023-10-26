@@ -1,0 +1,64 @@
+version: 3
+type: conversation
+name: "kubernetes_disable_cronjob"
+steps:
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: selected_namespace
+    type: input
+    value_type: enum
+    possible_values: ${k8s_namespaces}
+    prompt: "Select the namespace of the cron job you want to disable"
+  - id: k8s_cronjobs
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_enabled_cronjobs_for_namespace"
+      parameters:
+        namespace: ${selected_namespace}
+  - id: selected_cronjob
+    type: input
+    value_type: enum
+    possible_values: ${k8s_cronjobs}
+    prompt: "Select the cron job you want to disable"
+  - id: validate
+    type: input
+    value_type: boolean
+    prompt: '⚠️ Cron job *${selected_cronjob}* will be disabled in namespace *${selected_namespace}*. Do you want to continue?'
+  - id: condition
+    type: condition
+    if:
+      arg: ${validate}
+      is: equals
+      arg2: "true"
+      then:
+        - id: notify
+          type: message
+          prompt: |
+            🔄 Disabling cron job *${selected_cronjob}* in namespace *${selected_namespace}*...
+        - id: disable
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "disable_cronjob"
+            parameters:
+              cron_job_name: ${selected_cronjob}
+              namespace: ${selected_namespace}
+        - id: print_cronjob
+          type: message
+          prompt: |
+            ✅ *Done!*
+            Cron job *${selected_cronjob}* disabled in namespace *${selected_namespace}*!
+      else:
+        - id: cancel
+          type: message
+          prompt: |
+            ❌ *Cancelled!*
+            Cron job *${selected_cronjob}* disabling cancelled!

@@ -1,0 +1,111 @@
+version: 3
+type: conversation
+name: "kubernetes_job_with_output"
+steps:
+  # Get the list of namespaces in the cluster from the kubernetes store
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: demo
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: collected_information
+    type: multi_input
+    prompt: "Create a k8s job"
+    inputs:
+      - id: app_label
+        type: input
+        value_type: text
+        prompt: "Enter the app label of the job you want to create"
+      - id: job_name
+        type: input
+        value_type: text
+        prompt: "Enter the name of the job you want to create"
+      - id: container_name
+        type: input
+        value_type: text
+        prompt: "Enter the container name of the job you want to create"
+      - id: namespace
+        type: input
+        value_type: enum
+        possible_values: ${k8s_namespaces}
+        prompt: "Enter the namespace of the job you want to create"
+      - id: image
+        type: input
+        value_type: text
+        prompt: "Enter the image of the job you want to create"
+      - id: command
+        type: input
+        value_type: text
+        prompt: "Enter the command of the job you want to create"
+  - id: validate
+    type: input
+    value_type: boolean
+    prompt: |
+      🤔 *Confirm job creation*
+      Are you sure you want to create the job *${job_name}* in namespace *${namespace}*?
+      *Details:*
+      - App label: *${app_label}*
+      - Container name: *${container_name}*
+      - Image: *${image}*
+      - Command: *${command}*
+  - id: condition
+    type: condition
+    if:
+      arg: ${validate}
+      is: equals
+      arg2: "true"
+      then:
+        - id: notify
+          type: message
+          prompt: |
+            🚀 Creating job *${job_name}*...
+        - id: k8s_job
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "create_namespaced_job"
+            parameters:
+              job_name: ${job_name}
+              name: ${job_name}
+              namespace: ${namespace}
+              app_label: ${app_label}
+              container_name: ${container_name}
+              image: ${image}
+              command: ${command}
+        - id: print_job
+          type: message
+          prompt: |
+            ✅ *Done!*
+            Job *${job_name}* created! Attempting to get output...
+        - id: job_label
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "get_job_controller_uid"
+            parameters:
+              name: ${job_name}
+              namespace: ${namespace}
+        - id: log_output
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "get_pod_logs_by_label"
+            parameters:
+              label: "${job_label}" # This is the label of the job controller
+              namespace: ${namespace}
+        - id: print_output
+          type: message
+          prompt: |
+            ✅ *Done!*
+            Job *${job_name}* output:```${log_output}```
+      else:
+        - id: cancel
+          type: message
+          prompt: |
+            ❌ *Cancelled!*
+            Job *${job_name}* creation cancelled!

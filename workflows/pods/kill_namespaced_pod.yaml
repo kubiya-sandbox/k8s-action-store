@@ -1,0 +1,64 @@
+version: 3
+type: conversation
+name: "kill_kubernetes_pods"
+steps:
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: selected_namespace
+    type: input
+    value_type: enum
+    possible_values: ${k8s_namespaces}
+    prompt: "Select the namespace of the pods you want to see"
+  - id: k8s_pods
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "get_pods"
+      parameters:
+        field_selector: "status.phase=Running"
+        namespace: ${selected_namespace}
+  - id: selected_pod
+    type: input
+    value_type: enum
+    possible_values: ${k8s_pods}
+    prompt: "Select the pod you want to kill"
+  - id: validate
+    type: input
+    value_type: boolean
+    prompt: '⚠️ Pod *${selected_pod}* will be killed in namespace *${selected_namespace}*. Do you want to continue?'
+  - id: condition
+    type: condition
+    if:
+      arg: ${validate}
+      is: equals
+      arg2: "true"
+      then:
+        - id: notify
+          type: message
+          prompt: |
+            🔄 Killing pod *${selected_pod}* in namespace *${selected_namespace}*...
+        - id: kill
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "delete_namespaced_pod"
+            parameters:
+              pod_name: ${selected_pod}
+              namespace: ${selected_namespace}
+        - id: print
+          type: message
+          prompt: |
+            ✅ *Done!*
+            Pod *${selected_pod}* killed in namespace *${selected_namespace}*!
+      else:
+        - id: cancel
+          type: message
+          prompt: |
+            ❌ *Cancelled!*

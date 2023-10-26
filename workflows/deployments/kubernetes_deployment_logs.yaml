@@ -1,0 +1,43 @@
+version: 3
+type: conversation
+name: "Get deployment logs from Kubernetes"
+steps:
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: selected_namespace
+    type: input
+    value_type: enum
+    possible_values: ${k8s_namespaces}
+    prompt: "Select the namespace of the deployment you want to see logs for"
+  - id: k8s_deployments
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_deployment"
+      parameters:
+        namespace: ${selected_namespace}
+  - id: selected_deployment
+    type: input
+    value_type: enum
+    possible_values: ${k8s_deployments}
+    prompt: "Select the deployment you want to see logs for"
+  - id: k8s_deployment_logs
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "get_deployment_logs"
+      parameters:
+        deployment: ${selected_deployment}
+        namespace: ${selected_namespace}
+  - id: print_logs
+    type: message
+    prompt: |
+      📜 *Logs for deployment ${selected_deployment} in namespace ${selected_namespace}*
+      ${k8s_deployment_logs}

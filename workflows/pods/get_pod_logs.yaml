@@ -1,0 +1,43 @@
+version: 3
+type: conversation
+name: "kubernetes_pod_logs"
+steps:
+  - id: k8s_namespaces
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_namespace"
+      parameters: {}
+  - id: selected_namespace
+    type: input
+    value_type: enum
+    possible_values: ${k8s_namespaces}
+    prompt: "Select the namespace of the pod you want to see logs for"
+  - id: k8s_pods
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "list_pods"
+      parameters:
+        namespace: ${selected_namespace}
+  - id: selected_pod
+    type: input
+    value_type: enum
+    possible_values: ${k8s_pods}
+    prompt: "Select the pod you want to see logs for"
+  - id: k8s_pod_logs
+    type: action
+    action:
+      runner: "demo"
+      store: kubernetes
+      name: "get_logs_for_pod"
+      parameters:
+        pod_name: ${selected_pod}
+        namespace: ${selected_namespace}
+  - id: print_logs
+    type: message
+    prompt: |
+      📜 *Logs for pod ${selected_pod} in namespace ${selected_namespace}*
+      ```${k8s_pod_logs}```

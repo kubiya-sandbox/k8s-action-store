@@ -1,0 +1,74 @@
+version: 3
+type: conversation
+name: "kubernetes_get_suspended_cronjobs"
+steps:
+  - id: all_namespaces_or_specific
+    type: input
+    value_type: enum
+    prompt: "Do you want to get suspended cron jobs from all namespaces or a specific one?"
+    possible_values:
+      - "All namespaces"
+      - "Specific namespace"
+  - id: condition
+    type: condition
+    if:
+      arg: ${all_namespaces_or_specific}
+      is: equals
+      arg2: "All namespaces"
+      then:
+        - id: cron_jobs
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "list_suspended_cronjobs"
+            parameters: {}
+        - id: check_if_no_jobs_found_in_all_namespaces
+          type: condition
+          if:
+            arg: ${cron_jobs}
+            is: equals
+            arg2: '[]' # Empty
+            then:
+              - id: notify_no_jobs_found_in_all_namespaces
+                type: message
+                prompt: "No suspended cron jobs found"
+            else:
+              - id: print_suspended_jobs_in_all_namespaces
+                type: json_message
+                prompt: "${cron_jobs}"
+      else:
+        - id: k8s_namespaces
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "list_namespace"
+            parameters: {}
+        - id: namespace
+          type: input
+          value_type: enum
+          prompt: "Select a namespace to get suspended cron jobs from"
+          possible_values: "${k8s_namespaces}"
+        - id: cron_jobs_in_namespace
+          type: action
+          action:
+            runner: "demo"
+            store: kubernetes
+            name: "list_suspended_cronjobs_for_namespace"
+            parameters:
+              name: "${namespace}"
+        - id: check_if_no_jobs_found_in_namespace
+          type: condition
+          if:
+            arg: ${cron_jobs_in_namespace}
+            is: equals
+            arg2: '[]' # Empty
+            then:
+              - id: notify_no_jobs_found_in_namespace
+                type: message
+                prompt: "No suspended cron jobs found in the namespace ${namespace}"
+            else:
+              - id: print_suspended_jobs_in_namespace
+                type: json_message
+                prompt: "${cron_jobs_in_namespace}"

@@ -1,0 +1,5 @@
+kubiya
+pydantic
+kubernetes==25.3.0
+gcloud==0.18.3
+requests
